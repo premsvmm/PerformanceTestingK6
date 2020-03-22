@@ -1,0 +1,21 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/golang:1.9
+    steps:
+      - checkout
+      - run:
+          name: Set Environment Variables
+          command: |
+            echo 'export TAG=${CIRCLE_SHA1}' >> $BASH_ENV
+            echo 'export IMAGE_NAME="perftest"' >> $BASH_ENV
+            echo 'export DOCKER_ID=${CIRCLE_USERNAME}'>> $BASH_ENV
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Build and push Docker image
+          command: |
+            docker build -t $CIRCLE_USERNAME/$IMAGE_NAME:$TAG .
+            echo $DOCKER_PWD | docker login -u $DOCKER_LOGIN --password-stdin
+            docker push $CIRCLE_USERNAME/$IMAGE_NAME:$TAG
