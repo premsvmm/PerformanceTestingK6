@@ -11,8 +11,9 @@ jobs:
             echo 'export TAG=${CIRCLE_SHA1}' >> $BASH_ENV
             echo 'export IMAGE_NAME="perftest"' >> $BASH_ENV
             echo 'export DOCKER_ID=${CIRCLE_USERNAME}'>> $BASH_ENV
-      - setup_remote_docker:
-          docker_layer_caching: true
+      - run:
+          name: Install Docker client
+          command: apk add docker-cli
       - run:
           name: Build and push Docker image
           command: |
