@@ -1,0 +1,1 @@
+k6 run $APP/$FILE.js --summary-trend-stats "min,avg,med,max,p(95),p(99),p(99.99)" --out json=my_test_result.json > logs.txt
