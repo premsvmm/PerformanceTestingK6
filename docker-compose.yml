@@ -1,0 +1,28 @@
+version: '3.7'
+
+services:
+  windscribe-httpproxy:
+    image: dilks/windscribe-httpproxy
+    restart: always
+    cap_add:
+      - NET_ADMIN
+    init: true
+    environment:
+      - WINDSCRIBE_USERNAME=premsvmm
+      - WINDSCRIBE_PASSWORD=fK9W1KMQfHxK
+      - HOST_PORT=${HOST_PORT:-8888} # Pass for echo purposes
+      - WINDSCRIBE_COUNTRY=US
+    dns:
+      - 1.1.1.1
+      - 1.0.0.1
+    ports:
+      - "${HOST_PORT:-8888}:8888"
+    tmpfs:
+      - /etc/windscribe:exec,mode=700,size=1m
+    networks:
+      - proxy-network
+    # ... other configurations ...
+
+networks:
+  proxy-network:
+    driver: bridge

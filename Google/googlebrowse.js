@@ -16,8 +16,9 @@ export default function(){
 }
 
 function loadGoogleWebsite(){
-        let resp = http.get("https://www.google.com");
-        console.log("Response Status Code "+resp.status);
+        let resp = http.get("https://api.country.is");
+        //console.log("Response Status Code "+resp.status);
+        console.log(resp.body)
         check_and_fail(resp,200);
     }
 
