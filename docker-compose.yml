@@ -1,28 +1,140 @@
-version: '3.7'
+version: '3.8'
 
 services:
-  windscribe-httpproxy:
+  # K6 Performance Testing Service
+  k6-performance-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: k6-performance-test
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-dev}
+      - TEST_PROFILE=${TEST_PROFILE:-smoke}
+      - DEBUG=${DEBUG:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - TEST_FILE=${TEST_FILE:-tests/google/google-api-test.js}
+      # VPN Configuration (optional)
+      - VPN_USERNAME=${VPN_USERNAME:-}
+      - VPN_PASSWORD=${VPN_PASSWORD:-}
+      - VPN_CONFIG=${VPN_CONFIG:-russia}
+      # Monitoring integrations
+      - INFLUXDB_URL=${INFLUXDB_URL:-}
+      - PROMETHEUS_URL=${PROMETHEUS_URL:-}
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    volumes:
+      - ./reports:/app/reports
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./vpnconfig:/app/vpnconfig:ro
+    networks:
+      - k6-network
+    depends_on:
+      - influxdb
+      - grafana
+    restart: unless-stopped
+
+  # Development service with additional tools
+  k6-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: k6-dev
+    environment:
+      - ENVIRONMENT=dev
+      - DEBUG=true
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    volumes:
+      - .:/app
+      - ./reports:/app/reports
+      - ./logs:/app/logs
+    networks:
+      - k6-network
+    command: tail -f /dev/null
+    profiles:
+      - dev
+
+  # InfluxDB for metrics storage
+  influxdb:
+    image: influxdb:2.7-alpine
+    container_name: k6-influxdb
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUXDB_USERNAME:-admin}
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUXDB_PASSWORD:-password123}
+      - DOCKER_INFLUXDB_INIT_ORG=${INFLUXDB_ORG:-k6-org}
+      - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUXDB_BUCKET:-k6-metrics}
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_TOKEN:-k6-token-123}
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - influxdb-config:/etc/influxdb2
+    networks:
+      - k6-network
+    profiles:
+      - monitoring
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: k6-grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
+      - GF_INSTALL_PLUGINS=grafana-influxdb-datasource
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - k6-network
+    depends_on:
+      - influxdb
+    profiles:
+      - monitoring
+
+  # Windscribe HTTP Proxy (optional)
+  windscribe-proxy:
     image: dilks/windscribe-httpproxy
-    restart: always
+    container_name: windscribe-proxy
+    restart: unless-stopped
     cap_add:
       - NET_ADMIN
     init: true
     environment:
-      - WINDSCRIBE_USERNAME=premsvmm
-      - WINDSCRIBE_PASSWORD=fK9W1KMQfHxK
-      - HOST_PORT=${HOST_PORT:-8888} # Pass for echo purposes
-      - WINDSCRIBE_COUNTRY=US
+      - WINDSCRIBE_USERNAME=${WINDSCRIBE_USERNAME:-}
+      - WINDSCRIBE_PASSWORD=${WINDSCRIBE_PASSWORD:-}
+      - HOST_PORT=${PROXY_PORT:-8888}
+      - WINDSCRIBE_COUNTRY=${WINDSCRIBE_COUNTRY:-US}
     dns:
       - 1.1.1.1
       - 1.0.0.1
     ports:
-      - "${HOST_PORT:-8888}:8888"
+      - "${PROXY_PORT:-8888}:8888"
     tmpfs:
       - /etc/windscribe:exec,mode=700,size=1m
     networks:
-      - proxy-network
-    # ... other configurations ...
+      - k6-network
+    profiles:
+      - proxy
+
+volumes:
+  influxdb-data:
+  influxdb-config:
+  grafana-data:
 
 networks:
-  proxy-network:
+  k6-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

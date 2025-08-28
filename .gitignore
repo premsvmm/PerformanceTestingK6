@@ -1,0 +1,49 @@
+# Logs
+logs/
+*.log
+
+# Reports
+reports/
+*.json
+
+# Data files
+data/
+*.csv
+*.xlsx
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# VPN auth files
+vpnconfig/auth.txt
+vpnconfig/*.auth
+
+# Docker
+.dockerignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node modules (if any)
+node_modules/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Test results
+test-results/
+coverage/
+
+# Monitoring data
+monitoring/data/
